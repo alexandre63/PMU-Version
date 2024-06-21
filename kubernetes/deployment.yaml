@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pmu-version-deployment
+  labels:
+    app: pmu-version
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pmu-version
+  template:
+    metadata:
+      labels:
+        app: pmu-version
+    spec:
+      containers:
+      - name: pmu-version
+        image: pmu-version:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: config
+          mountPath: "/server/config"
+      volumes:
+      # You set volumes at the Pod level, then mount them into containers inside that Pod
+      - name: config
+        configMap:
+          # Provide the name of the ConfigMap you want to mount.
+          name: pmu-version-config
