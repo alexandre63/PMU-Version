@@ -1,60 +1,41 @@
 import http
-from time import sleep
 from fastapi import FastAPI, Response
 import yaml
 import requests
-from threading import Thread
 import json
 
-last_config = ""
-all_version = {}
 in_prod = True
 
-def infinite_loop_check_config():
-    while(True):
-        sleep(10)
-        check_config()
-
-def check_config():
-    global last_config
-    global all_version
+def get_config():
     global in_prod
 
     response = requests.get('http://localhost:8080/api/v1/namespaces/default/configmaps/pmu-version-config')
     if(response.status_code != 200):
         print("not found pmu-version-config")
+        return {}
     else:
-        json_response = json.loads(response.text)
+        json_response = json.loads(response.text)#parse in json the http response
+        return yaml.load(json_response["data"]["config"], Loader=yaml.FullLoader)#http response to dict config
 
-        if(json_response["data"]["config"] != last_config):
-            last_config = json_response["data"]["config"]
-            config = yaml.load(last_config, Loader=yaml.FullLoader)
-            print("New config loaded: '" + last_config + "'")
-            in_prod = config["prod"]
-            all_version =  config["versions"]
-
-check_config()
-
-app = FastAPI()
-
-if(in_prod):
+config = get_config()
+if(config != {} and config["prod"]):
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 else:   
     app = FastAPI()
 
 @app.get("/{env_name}.txt")
 def version(env_name: str):
-    if(last_config == ""):
+    config = get_config()
+    if(config == {}):
         response = Response(content="Config not found")
+        response.status_code = http.HTTPStatus.INTERNAL_SERVER_ERROR
         return response
-    if(all_version.get(env_name) == None):
+    versions_config = config["versions"]
+    if(versions_config.get(env_name) == None):
         response = Response(content="Environnement not found")
         response.status_code = http.HTTPStatus.NOT_FOUND
         return response
     
-    version = all_version[env_name]
+    version = versions_config[env_name]
     response = Response(content=version)
     return response
-
-check_config_thread = Thread(target = infinite_loop_check_config, daemon=True)
-check_config_thread.start()
