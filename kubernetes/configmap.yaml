@@ -3,10 +3,11 @@ kind: ConfigMap
 metadata:
   name: pmu-version-config
 data: 
-  config.yaml: |
+  config: |
+    prod: false
     versions:
-      rpmugbl6: 1.5.0;04/06/2024 12:24:03
-      ipmugbl6: 2.0.0;04/07/2024 12:24:03
-      spmugbl6: 3.0.0;04/08/2024 12:24:03
-      ipmugbl7: 4.0.0;04/09/2024 12:24:03
-      apmugbl6: 5.0.0;04/10/2024 12:24:03
+      rpmugbl6: "1.0.0;04/06/2024 12:24:10"
+      ipmugbl6: "2.0.0;04/07/2024 12:24:03"
+      spmugbl6: "3.0.0;04/08/2024 12:24:03"
+      ipmugbl7: "4.0.0;04/09/2024 12:24:03"
+      apmugbl6: "5.0.0;04/10/2024 12:24:03"
