@@ -1,40 +1,60 @@
 import http
-import os
+from time import sleep
 from fastapi import FastAPI, Response
-import uvicorn
 import yaml
+import requests
+from threading import Thread
+import json
+
+last_config = ""
+all_version = {}
+in_prod = True
+
+def infinite_loop_check_config():
+    while(True):
+        sleep(10)
+        check_config()
+
+def check_config():
+    global last_config
+    global all_version
+    global in_prod
+
+    response = requests.get('http://localhost:8080/api/v1/namespaces/default/configmaps/pmu-version-config')
+    if(response.status_code != 200):
+        print("not found pmu-version-config")
+    else:
+        json_response = json.loads(response.text)
+
+        if(json_response["data"]["config"] != last_config):
+            last_config = json_response["data"]["config"]
+            config = yaml.load(last_config, Loader=yaml.FullLoader)
+            print("New config loaded: '" + last_config + "'")
+            in_prod = config["prod"]
+            all_version =  config["versions"]
+
+check_config()
 
 app = FastAPI()
 
-all_version = {}
-
-def open_config():
-    config_path = "/server/config/config.yaml"
-    if(not os.path.exists(config_path)):
-        raise Exception("config not exists(/server/config/config.yaml not exists)")
-    if(not os.path.isfile(config_path)):
-        raise Exception("config is not a file(/server/config/config.yaml is not a file)")
-
-    with open(config_path) as file:
-        data = yaml.load(file, Loader=yaml.FullLoader)
-        for env_name in data["versions"]:
-            all_version[env_name] = str(data["versions"][env_name])
-    print(all_version)
-
+if(in_prod):
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+else:   
+    app = FastAPI()
 
 @app.get("/{env_name}.txt")
 def version(env_name: str):
+    if(last_config == ""):
+        response = Response(content="Config not found")
+        return response
     if(all_version.get(env_name) == None):
         response = Response(content="Environnement not found")
         response.status_code = http.HTTPStatus.NOT_FOUND
         return response
     
-    raw_version = all_version[env_name]
-    version = raw_version[0:raw_version.index(";")]# remove deployment timestamp
+    version = all_version[env_name]
     response = Response(content=version)
     return response
 
-open_config()
-
-if __name__ == '__main__':
-    uvicorn.run(app, host='0.0.0.0', port=8000)
+check_config_thread = Thread(target = infinite_loop_check_config, daemon=True)
+check_config_thread.start()
