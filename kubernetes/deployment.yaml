@@ -20,12 +20,3 @@ spec:
         imagePullPolicy: Never
         ports:
         - containerPort: 8000
-        volumeMounts:
-        - name: config
-          mountPath: "/server/config"
-      volumes:
-      # You set volumes at the Pod level, then mount them into containers inside that Pod
-      - name: config
-        configMap:
-          # Provide the name of the ConfigMap you want to mount.
-          name: pmu-version-config
